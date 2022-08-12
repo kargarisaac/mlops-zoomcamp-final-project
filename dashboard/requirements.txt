@@ -1,0 +1,2 @@
+numpy
+streamlit==1.11.1
