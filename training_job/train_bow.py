@@ -19,7 +19,7 @@ mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("customer-sentiment-analysis")
 
 ## data loading
-data = pd.read_csv('Womens Clothing E-Commerce Reviews.csv',index_col =[0])
+data = pd.read_csv('data/Womens Clothing E-Commerce Reviews.csv',index_col =[0])
 
 ## preprocess text
 data = data[~data['Review Text'].isnull()]  #Dropping columns which don't have any review

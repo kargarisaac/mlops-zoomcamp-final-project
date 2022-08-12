@@ -3,15 +3,14 @@
 import numpy as np
 import pandas as pd
 import os
-
 import nltk
 import re
-# nltk.download('stopwords')
-os.environ["NLTK_DATA"] = "./corpora"
-
+if os.path.exists('./corpora'):
+    os.environ["NLTK_DATA"] = "./corpora"
+else:
+    nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.stem.porter import PorterStemmer
-
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -19,42 +18,50 @@ from sklearn.model_selection import train_test_split
 import mlflow
 from mlflow.tracking import MlflowClient
 import pickle
-
-tracking_uri = "sqlite:///mlflow.db"
-model_name = "customer-sentiment-analysis"
-
-mlflow.set_tracking_uri(tracking_uri)
-mlflow.set_experiment(model_name)
-client = MlflowClient(tracking_uri=tracking_uri)
+from prefect import flow, task
 
 ## data loading
-def read_data(filename='Womens Clothing E-Commerce Reviews.csv'):
+@task
+def read_data(filename='data/Womens Clothing E-Commerce Reviews.csv'):
     data = pd.read_csv(filename,index_col =[0])
     print("Data loaded.\n\n")
     return data
 
 ## preprocess text
+@task
 def preprocess_data(data):
-    data = data[~data['Review Text'].isnull()]  #Dropping columns which don't have any review
-    X = data[['Review Text']]
-    X.index = np.arange(len(X))
+    #check if data/corpus is created before or not
+    if not os.path.exists('data/corpus_y.pickle'):
+        print("Preprocessed data not found. Creating new data. \n\n")
+        data = data[~data['Review Text'].isnull()]  #Dropping columns which don't have any review
+        X = data[['Review Text']]
+        X.index = np.arange(len(X))
 
-    y = data['Recommended IND']
+        y = data['Recommended IND']
 
-    corpus =[]
-    for i in range(len(X)):
-        review = re.sub('[^a-zA-z]',' ',X['Review Text'][i])
-        review = review.lower()
-        review = review.split()
-        ps = PorterStemmer()
-        review =[ps.stem(i) for i in review if not i in set(stopwords.words('english'))]
-        review =' '.join(review)
-        corpus.append(review)
+        corpus =[]
+        for i in range(len(X)):
+            review = re.sub('[^a-zA-z]',' ',X['Review Text'][i])
+            review = review.lower()
+            review = review.split()
+            ps = PorterStemmer()
+            review =[ps.stem(i) for i in review if not i in set(stopwords.words('english'))]
+            review =' '.join(review)
+            corpus.append(review)
+
+        with open('data/corpus_y.pickle', 'wb') as handle:
+            pickle.dump((corpus, y), handle)
+    else:
+        print("Preprocessed data found. Loading data. \n\n")
+        with open('data/corpus_y.pickle', 'rb') as handle:
+            corpus, y = pickle.load(handle)
 
     print("Data preprocessed.\n\n")
+
     return corpus, y
 
 ## tokenization and dataset creation
+@task
 def create_dataset(corpus, y, test_size=0.2, random_state=0):
     tokenizer = Tokenizer(num_words = 3000)
     tokenizer.fit_on_texts(corpus)
@@ -68,6 +75,7 @@ def create_dataset(corpus, y, test_size=0.2, random_state=0):
     return X_train, X_test, y_train, y_test, tokenizer
 
 # mlflow.tensorflow.autolog()
+@task
 def model_training(X_train, y_train, X_test, y_test, tokenizer):
     for embedding_dim, batch_size in zip([32, 64, 128], [32, 64, 128]):
         with mlflow.start_run():
@@ -129,7 +137,7 @@ def model_training(X_train, y_train, X_test, y_test, tokenizer):
 
     print("Model training completed.\n\n")
 
-def get_best_model():
+def get_best_model(model_name, client):
     model = mlflow.keras.load_model(f"models:/{model_name}/production", dst_path=None)
     for mv in client.search_model_versions(f"name='{model_name}'"):
         if dict(mv)['current_stage'] == 'Production':
@@ -157,11 +165,20 @@ def test_model(model, X_test, tokenizer):
     sample_predict = model.predict(padded_sample)
     print(f"model prediction for input: {sample_string} \n {sample_predict}")
 
+@flow
+def main():
+    tracking_uri = "sqlite:///mlflow.db"
+    model_name = "customer-sentiment-analysis"
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment(model_name)
+    # client = MlflowClient(tracking_uri=tracking_uri)
 
-if __name__ == '__main__':
     data = read_data()
     corpus, y = preprocess_data(data)
     X_train, X_test, y_train, y_test, tokenizer = create_dataset(corpus, y)
     model_training(X_train, y_train, X_test, y_test, tokenizer)
-    model, tokenizer = get_best_model()
-    test_model(model, X_test, tokenizer)
+    # model, tokenizer = get_best_model(model_name, client)
+    # test_model(model, X_test, tokenizer)
+
+if __name__ == '__main__':
+    main()
