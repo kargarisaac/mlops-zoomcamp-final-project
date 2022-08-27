@@ -1,6 +1,6 @@
-*.db
-corpora/
 mlruns/
 models/
-data/
 tokenizer_pickle/
+zenml_stack_recipes/
+*.db
+*.ipynb

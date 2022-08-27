@@ -1,0 +1,16 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+nltk = "3.7"
+tensorflow = "2.9.1"
+mlflow = "1.25.1"
+scikit-learn = "*"
+zenml = {version = "==0.13.0", extras = ["stacks"]}
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
