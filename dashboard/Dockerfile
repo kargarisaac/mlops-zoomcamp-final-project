@@ -1,14 +1,14 @@
-FROM python:3.7
+FROM python:3.9-slim
 
-WORKDIR /app
-
-COPY requirements.txt ./requirements.txt
-
-RUN pip3 install -r requirements.txt
+RUN pip install -U pip
+RUN pip install pipenv 
 
 EXPOSE 8080
 
-COPY . /app
+WORKDIR /app
 
-# cmd to launch app when container is run
-CMD streamlit run --server.port 8080 --server.enableCORS=false /app/app.py
+COPY . .
+
+RUN pipenv install --system --deploy
+
+CMD streamlit run --server.port 8080 --server.enableCORS=false app.py

@@ -7,20 +7,17 @@ st.set_page_config(
     layout="wide",
 )
 
+st.header("Fashion Sentiment Analysis UI")
+
 #############################################################################################
-review_text = st.text_input('User review', 'absolut wonder silki sexi comfort')
+st.image("https://krm-stc-ms.azureedge.net/-/media/Images/Ecco/Products/MENS/BROWN/ECCO-SOFT-7-M/470364-02053-main.webp?Crop=1&Size=ProductDetailsMedium1x")
+review_text = st.text_input('User review about the product:', 'absolut wonder silki sexi comfort.')
 
-method = st.selectbox(
-     'Method',
-     ('TFIDF', 'BoW', 'Deep Learning'))
-
-methods = {
-    'TFIDF': 'tfidf',
-    'BoW': 'bow',
-    'Deep Learning': 'dl'
-}
 ## map
 if st.button("Analyze"):
-    url = f'http://localhost:8000/predict?review={review_text}&method={methods[method]}'
+    endpoint = "https://sentiment-lr4ixkffqq-ew.a.run.app"
+    # endpoint = "http://localhost:8080"
+    url = f'{endpoint}/predict?review={review_text}'
+    
     prediction = requests.get(url).json()
     st.write("Prediction:", prediction)

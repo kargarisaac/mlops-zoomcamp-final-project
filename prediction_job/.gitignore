@@ -1,2 +1,8 @@
 corpora/
 models/
+notebooks/
+data/
+mlruns/
+*.db
+tokenizer_pickle/
+key.json

@@ -4,3 +4,4 @@ mlruns/
 models/
 data/
 tokenizer_pickle/
+.zen/

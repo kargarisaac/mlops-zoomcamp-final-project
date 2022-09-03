@@ -1,2 +1,10 @@
 .pytest_cache
 __pycache__
+
+corpora/
+models/
+notebooks/
+data/
+mlruns/
+*.db
+tokenizer_pickle/

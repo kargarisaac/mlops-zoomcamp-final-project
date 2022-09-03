@@ -1,8 +1,0 @@
-*.exe
-*.hcl
-*.info
-*.backup
-*.tfstate
-kubeconfig_*
-.terraform
-vertex_stack*

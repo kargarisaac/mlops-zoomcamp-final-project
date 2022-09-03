@@ -1,14 +1,17 @@
-FROM python:3.7
+FROM python:3.9-slim
+
+RUN pip install -U pip
+RUN pip install pipenv 
+
+EXPOSE 8080
+ENV EXPERIMENT_ID 2
+ENV RUN_ID 7e6fc298380e484ba7cac0ab029ba510
 
 WORKDIR /app
 
-COPY requirements.txt ./requirements.txt
+COPY . .
 
-RUN pip3 install -r requirements.txt
+RUN pipenv install --system --deploy
 
-EXPOSE 8080
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 
-COPY . /app
-
-# cmd to launch app when container is run
-CMD streamlit run --server.port 8080 --server.enableCORS=false /app/app.py

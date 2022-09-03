@@ -1,16 +1,20 @@
 from fastapi import FastAPI
 import os
-from utils import preprocess
-# nltk.download('stopwords', download_dir='.')
-# export NLTK_DATA=/my/path/nltk_data
-os.environ["NLTK_DATA"] = "./corpora"
-
+import nltk
 from nltk.corpus import stopwords
-
-import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-
+import mlflow
 import pickle
+from google.cloud import storage
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+
+nltk.download('stopwords')
+experiment_id = str(os.getenv("EXPERIMENT_ID"))
+run_id = str(os.getenv("RUN_ID"))
+
+path_on_gcs = experiment_id + "/" + run_id
+stop_words = set(stopwords.words('english'))
 
 
 # fastapi app
@@ -25,14 +29,52 @@ app = FastAPI(
 )
 
 
+def preprocess(review):
+    review_processed = review.lower()
+    review_processed = review_processed.split()
+    ps = PorterStemmer()
+    review_processed =[ps.stem(i) for i in review_processed if not i in set(stopwords.words('english'))]
+    review_processed =' '.join(review_processed)
+    return review_processed
+
+def download_mlflow_artifacts():
+    # create storage client
+    storage_client = storage.Client.from_service_account_json('key.json')
+    # storage_client = storage.Client()
+    # get bucket with name
+    bucket = storage_client.get_bucket('mlflow-demo-1360')
+    # get bucket data as blob
+    blobs = bucket.list_blobs(prefix=path_on_gcs) 
+
+    for blob in blobs:
+        blob_name = blob.name 
+        file_path = "models/" + blob_name
+        folder_path = os.path.dirname(file_path)
+        if os.path.isdir(folder_path) == False:
+            os.makedirs(folder_path)
+        
+        blob.download_to_filename(file_path)
+    
+    print("Artifacts downloaded.\n\n")
+
+def load_model_tokenizer():
+    artifact_folder = f"models/{path_on_gcs}/artifacts"
+    model = mlflow.pyfunc.load_model(f"{artifact_folder}/models/model_dl")
+
+    with open(f"{artifact_folder}/tokenizer_pickle/tf_tokenizer.pickle", 'rb') as handle:
+        tokenizer = pickle.load(handle)
+
+    print("Model and tokenizer loaded.\n\n")
+    return model, tokenizer
+
+
 @app.get("/")
 async def root():
     return {"message": "Customer review sentiment analysis"}
 
 
-# @app.get("/predict/{review}/{method}")
 @app.get("/predict")
-async def get_predict(review: str, method: str):
+async def get_predict(review: str,):
     """
     Reads the list of sensors from the database
     """
@@ -41,39 +83,18 @@ async def get_predict(review: str, method: str):
 
         if len(review_processed) == 0:
             return {"message": "Please enter a valid review - It seems there is no valubale review in the text."}
-            
-        if method == 'tfidf':
-            with open('models/model_tfidf.pickle', 'rb') as f:
-                tv, clf = pickle.load(f)
-            tfidf_vector = tv.transform([review_processed])
-            return {
-                "prediction": str(clf.predict(tfidf_vector)[0])
-                }
-        elif method == 'bow':
-            with open('models/model_bow.pickle', 'rb') as f:
-                cv, clf = pickle.load(f)
-            bow_vector = cv.transform([review_processed])
-            return {
-                "prediction": str(clf.predict(bow_vector)[0])
-                }
-        elif method == "dl":
-            ## load model and tokenizer
-            model = tf.keras.models.load_model('models/model.h5')
-            with open('models/tokenizer.pickle', 'rb') as handle:
-                tokenizer = pickle.load(handle)
-
-            review_processed = tokenizer.texts_to_sequences(review_processed)
-            review_processed = pad_sequences(review_processed, padding='post').T
-            prediction = model.predict(review_processed)
-            return {
-                "prediction": str(prediction[0][0])
-                }
-        else:
-            raise ValueError("method must be 'tfidf', 'bow' or 'dl'")
+        
+        download_mlflow_artifacts()
+        model, tokenizer = load_model_tokenizer()
+        review_processed = tokenizer.texts_to_sequences(review_processed)
+        review_processed = pad_sequences(review_processed, padding='post').T
+        prediction = model.predict(review_processed)
+        return {
+            "prediction": str(prediction[0][0])
+            }
+        
     except Exception as e:
         return {"error": str(e)}
-
-
 
 if __name__ == "__main__":
     import uvicorn
