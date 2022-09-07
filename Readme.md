@@ -9,6 +9,8 @@ I wrote several blog posts about this project and explained the codes and steps 
 
 - [MLOps project - part 2b: Machine Learning Workflow Orchestration using ZenML](https://kargarisaac.github.io/blog/mlops/2022/08/26/machine-learning-workflow-orchestration-zenml.html)
 
-- [MLOps project - part 3a: Machine Learning Model Deployment](https://kargarisaac.github.io/blog/mlops/2022/08/28/machine-learning-model-deployment.html)
+- [MLOps project - part 3: Machine Learning Model Deployment](https://kargarisaac.github.io/blog/mlops/2022/08/28/machine-learning-model-deployment.html)
+
+- [MLOps project - part 4a: Machine Learning Model Monitoring](https://kargarisaac.github.io/blog/mlops/2022/09/05/machine-learning-model-monitoring.html)
 
 I will add mode contents to the current blog posts and will add more tools to the stack as I learn more. 
